@@ -5,12 +5,14 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 
 import java.util.Date;
@@ -19,16 +21,18 @@ import java.util.Random;
 public class MyGdxGame extends ApplicationAdapter {
 	SpriteBatch batch;
 	ShapeRenderer shapeRenderer, shapeRendererCel;
-	MyCircle circle;
-	MyCircle celGry;
+
+	MyCircle player;
+	MyCircle circleGoal;
 
 	Date startTime;
-	Date inCircle;
+	Date timeInCircle;
 	boolean inCircleFlag;
 
-	boolean jestCelGry;
-	boolean dzialaOpor;
-	boolean koniec;
+	boolean isGoal = false;
+	boolean isResistance = false;
+	boolean isEndGame = false;
+
 	//pozycja koła
 	float y;
 	float x;
@@ -45,183 +49,160 @@ public class MyGdxGame extends ApplicationAdapter {
 
 	//wartosc grawitacji
 	float g;
-	boolean isGravity;
+	boolean isGravity = false;
 
 	//o ile powiekszamy predkosc
 	float p;
 
-
 	private Stage stage;
-	private TextButton buttonGravity, buttonOpor, buttonCel, buttonGra;
+	private TextButton buttonGravity, buttonResistance, buttonGoal, buttonReset;
+	private TextField winMessage, speedIncreaseTextField, vxTF, vyTF;
 
 	@Override
 	public void create () {
 		batch = new SpriteBatch();
 		shapeRenderer = new ShapeRenderer();
 		shapeRendererCel = new ShapeRenderer();
-		circle = new MyCircle(20, 20, 15);
+		player = new MyCircle(20, 20, 15);
 		r = 20;
-		y=0;
+		y = 0;
 		x = 0;
 		vx = 0;
 		vy = 0;
 		dt = 1;
 		g = (float) 0.955;
-		p = 8;
+		p = 2;
 
 		startTime = new Date();
-		isGravity = false;
-		dzialaOpor = false;
-		jestCelGry = false;
+		//isGravity = false;
+		//dzialaOpor = false;
+		//jestCelGry = false;
 		inCircleFlag = false;
-		inCircle = new Date();
-		koniec = false;
+		timeInCircle = new Date();
+		isEndGame = false;
 
+		if(isGoal) {
+			Random random = new Random();
+			float celX, celY;
+			celX = random.nextInt(Gdx.graphics.getWidth() - 80 - 50 + 1) + 50;
+			celY = random.nextInt(450 - 80);
 
+			circleGoal = new MyCircle(celX, celY ,30);
+		}
 
-		Skin skin = new Skin(Gdx.files.internal("data/uiskin.json"));
-		stage = new Stage();
-
-		buttonGravity = new TextButton("Gravity off", skin);
-		stage.addActor(buttonGravity);
-		buttonGravity.addListener(new ClickListener() {
-			@Override
-			public void clicked(InputEvent event, float x, float y) {
-				if(isGravity) {
-					buttonGravity.setText("Gravity off");
-					isGravity = false;
-				}
-				else {
-					buttonGravity.setText("Gravity on");
-					isGravity = true;
-				}
-				System.out.println("TESTS");
-			}
-		});
-
-		buttonOpor = new TextButton("Opor off", skin);
-		stage.addActor(buttonOpor);
-		buttonOpor.addListener(new ClickListener() {
-			@Override
-			public void clicked(InputEvent event, float x, float y) {
-				if(dzialaOpor) {
-					buttonOpor.setText("Opor off");
-					dzialaOpor = false;
-				}
-				else {
-					buttonOpor.setText("Opór on");
-					dzialaOpor = true;
-				}
-				System.out.println("TESTS");
-			}
-		});
-
-		buttonCel = new TextButton("Cel off", skin);
-		stage.addActor(buttonCel);
-		buttonCel.addListener(new ClickListener() {
-			@Override
-			public void clicked(InputEvent event, float x, float y) {
-				if(jestCelGry) {
-					buttonCel.setText("Cel off");
-					jestCelGry = false;
-				}
-				else {
-					buttonCel.setText("Cel on");
-
-					jestCelGry = true;
-					if(jestCelGry) {
-						Random random = new Random();
-						float celX, celY;
-						celX = random.nextInt(Gdx.graphics.getWidth() - 80 - 50 + 1) + 50;
-						celY = random.nextInt(450 - 80);
-
-						celGry = new MyCircle(celX, celY ,30);
-					}
-				}
-				System.out.println("TESTS");
-			}
-		});
-
-		//TODO: Dodać reset gry
-
-		Gdx.input.setInputProcessor(stage);
+		setupButton();
 	}
 
 	@Override
 	public void render () {
-		Gdx.gl.glClearColor(1, 0, 1, 1);
+		Gdx.gl.glClearColor(0, 0, 0, 0);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 		stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
 		stage.draw();
 		buttonGravity.setPosition(10, 450);
-		buttonOpor.setPosition(buttonGravity.getX() + buttonGravity.getWidth() + 35,450);
-		buttonCel.setPosition(buttonOpor.getX() + buttonOpor.getWidth() +35,450);
+		buttonResistance.setPosition(buttonGravity.getX() + buttonGravity.getWidth() + 10,450);
+		buttonGoal.setPosition(buttonResistance.getX() + buttonResistance.getWidth() + 10,450);
+		buttonReset.setPosition(buttonGoal.getX() + buttonGoal.getWidth() + 10,450);
+		speedIncreaseTextField.setPosition(buttonReset.getX() + buttonReset.getWidth() + 10,450);
+		vxTF.setPosition(speedIncreaseTextField.getX() + speedIncreaseTextField.getWidth() + 10,465);
+		vyTF.setPosition(speedIncreaseTextField.getX() + speedIncreaseTextField.getWidth() + 10,450);
+		if(!isEndGame) {
+			game();
+		}
+	}
 
-		if(!koniec) {
-			if(jestCelGry) {
+	private void game() {
+		drawGoalCircle();
+		drawPlayerCircle();
+		long t = (new Date().getTime() - startTime.getTime())/1000;
+		control();
+		resistance();
+		gravity();
+		vxTF.setText("VX: " + Math.abs(vx));
+		if(player.getY() <= 15) {
+			vyTF.setText("VY: " + 0.0);
+		} else {
+			vyTF.setText("VY: " + Math.abs(vy));
+		}
 
-				shapeRendererCel.begin(ShapeRenderer.ShapeType.Filled);
-				shapeRendererCel.setColor(Color.BLUE);
-				celGry.render(shapeRendererCel);
-				shapeRendererCel.end();
-			}
+		calculatePlayerPosition();
+		goalEngine(t);
+	}
 
-
-			shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-			circle.render(shapeRenderer);
-			shapeRenderer.end();
-
-
-			long t = (new Date().getTime() - startTime.getTime())/1000;
-
-			control();
-
-			if(dzialaOpor) {
-				vx = vx*b();
-				vy = vy*b();
-			}
-
-
-			gravity();
-			System.out.println(vy);
-			x += vx*dt;
-			y += vy*dt;
-			//Kolizja z oknem
-			windowCollision();
-
-			//TODO: Promien celu w zmiennej
-
-
-			circle.setPos(x, y);
-			if(jestCelGry) {
-				float osX = celGry.getX() - circle.getX();
-				float osY = celGry.getY() - circle.getY();
-				long timeInCircle = 0;
-				if (Math.abs(osX) <= 15 && Math.abs(osY) <= 15) {
-					if (vx <= 0.001 && vy <= 0.001) {
-						if (!inCircleFlag) {
-							inCircleFlag = true;
-							inCircle = new Date();
-						} else {
-							timeInCircle = new Date().getTime() - inCircle.getTime();
-							if (timeInCircle >= 2000) {
-								System.out.println("Wygrałeś!!!!\nCzas który potrzebowałeś to: " + t);
-								shapeRendererCel.begin(ShapeRenderer.ShapeType.Filled);
-								koniec = true;
-								shapeRendererCel.setColor(Color.RED);
-								celGry.render(shapeRendererCel);
-								shapeRendererCel.end();
-							}
-						}
-
+	private void goalEngine(long t) {
+		if(isGoal) {
+			buttonGoal.setText("Game ON " + t);
+			float osX = circleGoal.getX() - player.getX();
+			float osY = circleGoal.getY() - player.getY();
+			long timeInCircle = 0;
+			if (Math.abs(osX) <= 15 && Math.abs(osY) <= 15) {
+				if (vx <= 0.001 && vy <= 0.001) {
+					if (!inCircleFlag) {
+						inCircleFlag = true;
+						this.timeInCircle = new Date();
 					} else {
-						inCircleFlag = false;
+						timeInCircle = new Date().getTime() - this.timeInCircle.getTime();
+						if (timeInCircle >= 2000) {
+							//TODO: Pokazac komunikat w okienku gry
+							System.out.println("Wygrałeś!!!!\nCzas który potrzebowałeś to: " + t);
+							String message = "WIN! Time: "+ t;
+							winMessage.setText(message);
+							shapeRendererCel.begin(ShapeRenderer.ShapeType.Filled);
+							isEndGame = true;
+							shapeRendererCel.setColor(Color.RED);
+							circleGoal.render(shapeRendererCel);
+							shapeRendererCel.end();
+						}
 					}
 
 				} else {
 					inCircleFlag = false;
 				}
+
+			} else {
+				inCircleFlag = false;
 			}
+		}
+	}
+
+	private void calculatePlayerPosition() {
+		x += vx*dt;
+		y += vy*dt;
+		windowCollision();
+		player.setPos(x, y);
+	}
+
+	private void resistance() {
+		if(isResistance) {
+			vx = vx*b();
+			vy = vy*b();
+		}
+	}
+
+	private float b() {
+		float wynik = (vx*vx + vy*vy);
+
+		if(wynik >= 1)
+			wynik = (float) 0.9;
+
+		if(wynik < 0)
+			wynik = 0;
+
+		return wynik;
+	}
+
+	private void drawPlayerCircle() {
+		shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+		player.render(shapeRenderer);
+		shapeRenderer.end();
+	}
+
+	private void drawGoalCircle() {
+		if(isGoal) {
+			shapeRendererCel.begin(ShapeRenderer.ShapeType.Filled);
+			shapeRendererCel.setColor(Color.BLUE);
+			circleGoal.render(shapeRendererCel);
+			shapeRendererCel.end();
 		}
 	}
 
@@ -271,21 +252,145 @@ public class MyGdxGame extends ApplicationAdapter {
 		}
 	}
 
-	private float b() {
-		float wynik = (vx*vx + vy*vy);
-		//System.out.println(wynik + " <----" );
-		if(wynik >= 1)
-			wynik = (float) 0.9;
 
-		if(wynik < 0)
-			wynik = 0;
-
-		//System.out.println(wynik + "" );
-		return wynik;
-	}
 
 	@Override
 	public void dispose () {
 		batch.dispose();
+	}
+
+	private void setupButton() {
+		Skin skin = new Skin(Gdx.files.internal("data/uiskin.json"));
+		stage = new Stage();
+
+
+		if(isGravity) {
+			buttonGravity = new TextButton("Gravity ON", skin);
+		}
+		else {
+			buttonGravity= new TextButton("Gravity OFF", skin);
+		}
+
+		stage.addActor(buttonGravity);
+		buttonGravity.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+				if(isGravity) {
+					buttonGravity.setText("Gravity OFF");
+					isGravity = false;
+				}
+				else {
+					buttonGravity.setText("Gravity ON");
+					isGravity = true;
+				}
+			}
+		});
+
+		if(isResistance) {
+			buttonResistance = new TextButton("Resistance ON", skin);
+		}
+		else {
+			buttonResistance = new TextButton("Resistance OFF", skin);
+
+		}
+
+		stage.addActor(buttonResistance);
+		buttonResistance.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+				if(isResistance) {
+					buttonResistance.setText("Resistance OFF");
+					isResistance = false;
+				}
+				else {
+					buttonResistance.setText("Resistance ON");
+					isResistance = true;
+				}
+			}
+		});
+
+		if(isGoal) {
+			buttonGoal = new TextButton("Goal ON", skin);
+		}
+		else {
+			buttonGoal = new TextButton("Goal OFF", skin);
+		}
+
+		stage.addActor(buttonGoal);
+		buttonGoal.setWidth(buttonGoal.getWidth()+32);
+		buttonGoal.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+				if(isGoal) {
+					buttonGoal.setText("Goal OFF");
+					isGoal = false;
+				}
+				else {
+					buttonGoal.setText("Goal ON");
+					startTime = new Date();
+					isGoal = true;
+					if(isGoal) {
+						Random random = new Random();
+						float celX, celY;
+						celX = random.nextInt(Gdx.graphics.getWidth() - 80 - 50 + 1) + 50;
+						celY = random.nextInt(450 - 80);
+
+						circleGoal = new MyCircle(celX, celY ,30);
+					}
+				}
+
+			}
+		});
+
+		buttonReset = new TextButton("RESET", skin);
+		stage.addActor(buttonReset);
+		buttonReset.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+					create();
+			}
+		});
+
+
+
+		speedIncreaseTextField = new TextField(p + "", skin);
+		speedIncreaseTextField.setSize(64, buttonGoal.getHeight());
+		speedIncreaseTextField.setTextFieldListener((textField, c) -> {
+			try {
+				p = Float.parseFloat(textField.getText());
+			} catch (Exception ex) {
+				System.out.println("Nie da sie");
+				p = 0;
+			}
+
+		});
+		stage.addActor(speedIncreaseTextField);
+
+
+		TextField.TextFieldStyle style = new TextField.TextFieldStyle();
+		style.fontColor = Color.GREEN;
+		style.font = new BitmapFont();
+		float f = (float) 1.3;
+		style.font.getData().setScale(18 * style.font.getScaleY() / style.font.getLineHeight());
+		winMessage = new TextField("", style);
+		winMessage.setPosition(640/2 - winMessage.getWidth()/2 , 230);
+		stage.addActor(winMessage);
+
+		style = new TextField.TextFieldStyle();
+		style.fontColor = Color.WHITE;
+		style.font = new BitmapFont();
+		style.font.getData().setScale(16 * style.font.getScaleY() / style.font.getLineHeight());
+		vxTF = new TextField("VX: ", style);
+		vxTF.setPosition(640/2 - vxTF.getWidth()/2 , 230);
+		stage.addActor(vxTF);
+
+		style = new TextField.TextFieldStyle();
+		style.fontColor = Color.WHITE;
+		style.font = new BitmapFont();
+		style.font.getData().setScale(16 * style.font.getScaleY() / style.font.getLineHeight());
+		vyTF = new TextField("VY: ", style);
+		stage.addActor(vyTF);
+
+		Gdx.input.setInputProcessor(stage);
 	}
 }
